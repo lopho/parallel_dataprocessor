@@ -157,6 +157,12 @@ def main(args):
             help = "maximum total image size, MAX*MAX >= width*height"
     )
     parser.add_argument(
+            '--fixed_size',
+            type = int,
+            nargs = 2,
+            help = "use a fixed image size instead of variable size"
+    )
+    parser.add_argument(
             '--alpha',
             type = int,
             nargs = 3,
@@ -213,6 +219,7 @@ def main(args):
     data_processor = DataProcessor(
             model_name = args.model,
             device = args.device,
+            image_size = args.fixed_size,
             max_image_size = args.max,
             min_image_size = args.min,
             alpha_color = tuple(args.alpha),

@@ -8,6 +8,11 @@ name as the image name without extension.
 python main.py -i /folder/with/txt_and_image -o /output/folder \
     --max 512 --image_format webp
 ```
+Using a fixed image size of 768x384
+```sh
+python main.py -i /folder/with/txt_and_image -o /output/folder \
+    --fixed_size 768 384 --image_format webp
+```
 Encode images and text using VAE and CLIP, save only encoded data as torch pickle, one file per sample.\
 Using VAE and CLIP from stable diffusion v2.
 ```sh
@@ -19,9 +24,12 @@ python main.py -i /folder/with/txt_and_image -o /output/folder \
 
 ## Usage
 ```
-usage: main.py [-h] -i INPUT_PATH [-o OUTPUT_PATH] [--no_save_image] [--no_save_text] [--no_save_encoded] [--zip] [--zip_algorithm {store,deflate,lzma,bzip2}]
-               [--image_format {png,jpeg,webp}] [--image_quality IMAGE_QUALITY] [--image_compress] [-m MODEL] [-e] [--clip_layer CLIP_LAYER] [-b BATCH_SIZE] [-q]
-               [-s {nearest,bilinear,lanczos}] [-d DEVICE] [--min MIN] [--max MAX] [--alpha ALPHA ALPHA ALPHA] [--resume_from RESUME_FROM] [--no_parallel] [--lazy]
+usage: main.py [-h] -i INPUT_PATH [-o OUTPUT_PATH] [--no_save_image] [--no_save_text] [--no_save_encoded] [--zip]
+               [--zip_algorithm {store,deflate,lzma,bzip2}] [--image_format {png,jpeg,webp}]
+               [--image_quality IMAGE_QUALITY] [--image_compress] [-m MODEL] [-e] [--clip_layer CLIP_LAYER]
+               [-b BATCH_SIZE] [-q] [-s {nearest,bilinear,lanczos}] [-d DEVICE] [--min MIN] [--max MAX]
+               [--fixed_size FIXED_SIZE FIXED_SIZE] [--alpha ALPHA ALPHA ALPHA] [--resume_from RESUME_FROM]
+               [--no_parallel] [--lazy]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -54,10 +62,13 @@ optional arguments:
                         device used to run the VAE and CLIP for encoding
   --min MIN             minimum image side length, anything below will be stretched
   --max MAX             maximum total image size, MAX*MAX >= width*height
+  --fixed_size FIXED_SIZE FIXED_SIZE
+                        use a fixed image size instead of variable size
   --alpha ALPHA ALPHA ALPHA
                         color used to replace alpha channel if present
   --resume_from RESUME_FROM
-                        a file containing a list of file names without extension that will be skipped. processed data names will be appended.
+                        a file containing a list of file names without extension that will be skipped. processed data
+                        names will be appended.
   --no_parallel         disable parallel processing
   --lazy
 

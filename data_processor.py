@@ -32,6 +32,7 @@ class DataProcessor:
             model_name,
             device = 'cpu',
             hf_online = True,
+            image_size = None,
             max_image_size = 512,
             min_image_size = 256,
             alpha_color = (128, 128, 128),
@@ -39,6 +40,14 @@ class DataProcessor:
             clip_layer = 'last', # 'all', 'last', 'pooled', int(hidden layer index)
             parallel = True,
     ):
+        if image_size is not None:
+            if isinstance(image_size, (tuple, list)):
+                assert (image_size[0] // 64) == (image_size[0] / 64), 'fixed image size is not multiple of 64'
+                assert (image_size[1] // 64) == (image_size[1] / 64), 'fixed image size is not multiple of 64'
+            else:
+                assert (image_size // 64) == (image_size / 64), 'fixed image size is not multiple of 64'
+                image_size = (image_size, image_size)
+        self.image_size = image_size
         self.max_image_size = max_image_size
         self.min_image_size = min_image_size
         self.alpha_color = alpha_color
@@ -142,8 +151,10 @@ class DataProcessor:
         return self.pool_thread.submit(self._encode_text, batch, self.clip, self.tokenizer, self.device, self.clip_layer)
 
     @staticmethod
-    def _fit_image_size_to_64(w, h, max_image_size, min_image_size):
+    def _fit_image_size_to_64(w, h, image_size, max_image_size, min_image_size):
         box = (0, 0, w, h)
+        if image_size is not None:
+            return *image_size, box
         max_area = max_image_size ** 2
         scale = (max_area / (w * h)) ** 0.5
         w2 = round((w * scale) / 64) * 64
@@ -166,10 +177,10 @@ class DataProcessor:
         return w, h, box
 
     def fit_image_size(self, w, h):
-        return self._fit_image_size_to_64(w, h, self.max_image_size, self.min_image_size)
+        return self._fit_image_size_to_64(w, h, self.image_size, self.max_image_size, self.min_image_size)
 
     @staticmethod
-    def _process_image(entry, max_image_size, min_image_size, alpha_color, scale_algorithm):
+    def _process_image(entry, image_size, max_image_size, min_image_size, alpha_color, scale_algorithm):
         if entry['zip'] is not None:
             with zipfile.ZipFile(entry['zip']) as zf:
                 image = Image.open(zf.open(entry['image']))
@@ -182,6 +193,7 @@ class DataProcessor:
             image = image.convert('RGB')
         w, h, _ = DataProcessor._fit_image_size_to_64(
                 *image.size,
+                image_size,
                 max_image_size,
                 min_image_size
         )
@@ -193,12 +205,12 @@ class DataProcessor:
         if not self.parallel:
             r = []
             for e in batch:
-                x = self._process_image(e, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm)
+                x = self._process_image(e, self.image_size, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm)
                 r.append(FutureMock(x))
             return r
         r = []
         for e in batch:
-            r.append(self.pool.submit(self._process_image, e, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm))
+            r.append(self.pool.submit(self._process_image, e, self.image_size, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm))
         return r
 
     @staticmethod
