@@ -55,7 +55,9 @@ class DataProcessor:
         self.hf_online = hf_online
         self._model_name = model_name
         self.device = device
-        if clip_layer.isdecimal():
+        if isinstance(clip_layer, int):
+            self.clip_layer = clip_layer
+        elif clip_layer.isdecimal():
             self.clip_layer = int(clip_layer)
         else:
             self.clip_layer = clip_layer
