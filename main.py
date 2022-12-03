@@ -29,12 +29,9 @@ from data_processor import DataProcessor
 
 def main(args):
     time_start = time.time()
-
-    scale_algorithms = {
-        'nearest': Image.Resampling.NEAREST,
-        'bilinear': Image.Resampling.BILINEAR,
-        'lanczos': Image.Resampling.LANCZOS
-    }
+    scale_algorithms = dict()
+    for a in Image.Resampling:
+        scale_algorithms[str(a).split('.')[1].lower()] = a
     zip_algorithms = {
         'store': zipfile.ZIP_STORED,
         'deflate': zipfile.ZIP_DEFLATED,
@@ -180,13 +177,14 @@ def main(args):
             help = "disable parallel processing"
     )
     parser.add_argument(
-            '--lazy',
-            action = 'store_true'
+            '--no_lazy',
+            action = 'store_true',
+            help = "disable lazy evaluation Lazy can get more performance as parallel synchronization points are not fixed"
     )
     args = parser.parse_args(args)
     if args.no_parallel:
-        args.lazy = False
-    dataset = parse_folder(args.input_path)
+        args.no_lazy = True
+    dataset = parse_folder(args.input_path, quiet = args.quiet)
     if args.output_path is not None:
         progress_file = 'progress.txt'
         if args.resume_from is not None:
@@ -205,7 +203,7 @@ def main(args):
                     print(id, file = f)
     else:
         resume_callback = lambda x: x
-    if args.lazy:
+    if not args.no_lazy and not args.quiet:
         pbar = tqdm(total = len(dataset), desc = 'Samples', dynamic_ncols = True, smoothing = 0.01, colour = '#cc9911')
         plock = Lock()
         def pbar_progress(x):
@@ -233,8 +231,8 @@ def main(args):
             batch_size = args.batch_size,
             encode = args.encode,
             quiet = args.quiet,
-            progress = not args.lazy,
-            lazy = args.lazy
+            progress = args.no_lazy,
+            lazy = not args.no_lazy
     ):
         if args.output_path is not None:
             data_processor.save_entries(

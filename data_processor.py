@@ -184,12 +184,13 @@ class DataProcessor:
         if entry['zip'] is not None:
             with zipfile.ZipFile(entry['zip']) as zf:
                 image = Image.open(zf.open(entry['image']))
+                image.load()
         else:
             image = Image.open(entry['image'])
         if image.mode == 'RGBA':
             bg = Image.new('RGBA', image.size, alpha_color)
-            image = Image.alpha_composite(bg, image)
-        if image.mode != 'RGB':
+            image = Image.alpha_composite(bg, image).convert('RGB')
+        elif image.mode != 'RGB':
             image = image.convert('RGB')
         w, h, _ = DataProcessor._fit_image_size_to_64(
                 *image.size,
@@ -222,7 +223,7 @@ class DataProcessor:
 
     def encode_image(self, batch):
         if not self.parallel:
-            x = self._encode_image(batch, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm)
+            x = self._encode_image(batch, self.vae, self.device)
             return FutureMock(x)
         return self.pool_thread.submit(self._encode_image, batch, self.vae, self.device)
 

@@ -27,9 +27,9 @@ python main.py -i /folder/with/txt_and_image -o /output/folder \
 usage: main.py [-h] -i INPUT_PATH [-o OUTPUT_PATH] [--no_save_image] [--no_save_text] [--no_save_encoded] [--zip]
                [--zip_algorithm {store,deflate,lzma,bzip2}] [--image_format {png,jpeg,webp}]
                [--image_quality IMAGE_QUALITY] [--image_compress] [-m MODEL] [-e] [--clip_layer CLIP_LAYER]
-               [-b BATCH_SIZE] [-q] [-s {nearest,bilinear,lanczos}] [-d DEVICE] [--min MIN] [--max MAX]
-               [--fixed_size FIXED_SIZE FIXED_SIZE] [--alpha ALPHA ALPHA ALPHA] [--resume_from RESUME_FROM]
-               [--no_parallel] [--lazy]
+               [-b BATCH_SIZE] [-q] [-s {nearest,box,bilinear,hamming,bicubic,lanczos}] [-d DEVICE] [--min MIN]
+               [--max MAX] [--fixed_size FIXED_SIZE FIXED_SIZE] [--alpha ALPHA ALPHA ALPHA] [--resume_from RESUME_FROM]
+               [--no_parallel] [--no_lazy]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -54,9 +54,10 @@ optional arguments:
   --clip_layer CLIP_LAYER
                         which CLIP hidden state to use: all, last, pooled, 0,1,2,3,4,5,... (hidden layer index)
   -b BATCH_SIZE, --batch_size BATCH_SIZE
-                        batch size, if not encoding, high values (like 512) get better throughput with little RAM overhead
+                        batch size, if not encoding, high values (like 512) get better throughput with little RAM
+                        overhead
   -q, --quiet           suppress info messages
-  -s {nearest,bilinear,lanczos}, --scale_algorithm {nearest,bilinear,lanczos}
+  -s {nearest,box,bilinear,hamming,bicubic,lanczos}, --scale_algorithm {nearest,box,bilinear,hamming,bicubic,lanczos}
                         the scaling algorithm used to resize images
   -d DEVICE, --device DEVICE
                         device used to run the VAE and CLIP for encoding
@@ -70,7 +71,8 @@ optional arguments:
                         a file containing a list of file names without extension that will be skipped. processed data
                         names will be appended.
   --no_parallel         disable parallel processing
-  --lazy
+  --no_lazy             disable lazy evaluation Lazy can get more performance as parallel synchronization points are
+                        not fixed
 
 Copyright (C) 2022 Lopho <contact@lopho.org> | Licensed under the AGPLv3 <https://www.gnu.org/licenses/>
 ```
