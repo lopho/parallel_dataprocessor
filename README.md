@@ -1,6 +1,72 @@
 # parallel_dataloader
 
-## Examples
+## As a dataloader for training
+
+### Examples
+Resize images and create batched buckets.
+> Note: the last batch of each bucket can be smaller than `batch_size`
+
+> Note: if you call the DataProcessor with `lazy = True`, all batches will be returned almost immediatly. Batches are being processed in the background. When accessing data that is not done yet the call will block until the requested data is ready.
+```py
+from PIL import Image
+from data_processor import DataProcessor
+dp = DataProcessor(
+        max_image_size = 512,
+        min_image_size = 256,
+        scale_algorithm = Image.Resampling.BILINEAR
+)
+for b in dp(dataset = '/path/to/dataset', batch_size = 16):
+    # b is a list of dicts, with size of batch size
+    # len(b) == batch_size
+    # b = [
+    #   {
+    #       'id': filename without extension (String),
+    #       'latent': None
+    #       'latent_std': None,
+    #       'encoded_text': None,
+    #       'image': PIL.Image,
+    #       'text': String,
+    #   },
+    #   {...},
+    #   ...
+    # ]
+```
+Resize and encode images with VAE, encode text with CLIP using penultimate layer
+```py
+from PIL import Image
+from data_processor import DataProcessor
+dp = DataProcessor(
+        # for sd v2: model_name = 'stabilityai/stable-diffusion-2'
+        model_name = 'CompVis/stable-diffusion-v1-4',
+        encode = True,
+        max_image_size = 512,
+        min_image_size = 256,
+        clip_layer = -2,
+        scale_algorithm = Image.Resampling.LANCZOS
+)
+for b in dp(dataset = '/path/to/dataset', batch_size = 16):
+    # b is a list of dicts, with size of batch size
+    # len(b) == batch_size
+    # b = [
+    #   {
+    #       'id': filename without extension (String),
+    #       'latent': torch.Tensor
+    #       'latent_std': torch.Tensor,
+    #       'encoded_text': torch.Tensor,
+    #       'image': PIL.Image,
+    #       'text': String,
+    #   },
+    #   {...},
+    #   ...
+    # ]
+```
+
+## As a script for preprocessing
+```sh
+python main.py -i /input/folder -o /output/folder
+```
+
+### Examples
 Resize images to multiple of 64 with a max area of 512x512, save as webp.\
 Input folder needs images and texts. Texts with `.txt` extension and the same
 name as the image name without extension.
@@ -22,7 +88,7 @@ python main.py -i /folder/with/txt_and_image -o /output/folder \
     --model 'stabilityai/stable-diffusion-2'
 ```
 
-## Usage
+### Usage
 ```
 usage: main.py [-h] -i INPUT_PATH [-o OUTPUT_PATH] [--no_save_image] [--no_save_text] [--no_save_encoded] [--zip]
                [--zip_algorithm {store,deflate,lzma,bzip2}] [--image_format {png,jpeg,webp}]
