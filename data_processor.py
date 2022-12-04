@@ -82,11 +82,14 @@ class DataProcessor:
 
     def wait_for_done(self):
         if self.parallel:
+            sh = signal.getsignal(signal.SIGINT)
+            signal.signal(signal.SIGINT, self._error_handler)
             try:
                 self.pool.shutdown(wait = True)
                 self.pool_thread.shutdown(wait = True)
             except:
                 self._error_handler()
+            signal.signal(signal.SIGINT, sh)
             self.pool = CatchPool(
                         ProcessPoolExecutor(
                                 initializer=signal.signal,
