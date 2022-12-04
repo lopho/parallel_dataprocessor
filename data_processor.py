@@ -23,7 +23,7 @@ from tqdm.auto import tqdm
 from PIL import Image
 import torch
 
-from utils import LazyDict, FutureMock, batched, pil_to_torch, load_vae_and_clip
+from utils import LazyDict, FutureMock, CatchPool, batched, pil_to_torch, load_vae_and_clip
 from folder_parser import parse_folder_encoded, parse_folder
 
 
@@ -64,21 +64,40 @@ class DataProcessor:
         self.vae, self.clip, self.tokenizer = None, None, None
         self.parallel = parallel
         if parallel:
-            self.pool = ProcessPoolExecutor(initializer=signal.signal, initargs=(signal.SIGINT, signal.SIG_DFL))
-            self.pool_thread = ThreadPoolExecutor()
+            self.pool = CatchPool(
+                        ProcessPoolExecutor(
+                                initializer=signal.signal,
+                                initargs=(signal.SIGINT, signal.SIG_DFL)
+                        ),
+                        error_callback = self._error_handler
+            )
+            self.pool_thread = CatchPool(
+                    ThreadPoolExecutor(),
+                    error_callback = self._error_handler
+            )
 
-    def _sigint_handler(self, *_):
-        self.pool_thread.shutdown(wait = False, cancel_futures = True)
+    def _error_handler(self, *_):
         self.pool.shutdown(wait = False, cancel_futures = True)
-        raise KeyboardInterrupt
+        self.pool_thread.shutdown(wait = False, cancel_futures = True)
 
     def wait_for_done(self):
         if self.parallel:
-            signal.signal(signal.SIGINT, self._sigint_handler)
-            self.pool.shutdown(wait = True)
-            self.pool_thread.shutdown(wait = True)
-            self.pool_thread = ThreadPoolExecutor()
-            self.pool = ProcessPoolExecutor(initializer=signal.signal, initargs=(signal.SIGINT, signal.SIG_DFL))
+            try:
+                self.pool.shutdown(wait = True)
+                self.pool_thread.shutdown(wait = True)
+            except:
+                self._error_handler()
+            self.pool = CatchPool(
+                        ProcessPoolExecutor(
+                                initializer=signal.signal,
+                                initargs=(signal.SIGINT, signal.SIG_DFL)
+                        ),
+                        error_callback = self._error_handler
+            )
+            self.pool_thread = CatchPool(
+                    ThreadPoolExecutor(),
+                    error_callback = self._error_handler
+            )
 
     @property
     def model_name(self):
@@ -150,7 +169,14 @@ class DataProcessor:
         if not self.parallel:
             x = self._encode_text(batch, self.clip, self.tokenizer, self.device, self.clip_layer)
             return FutureMock(x)
-        return self.pool_thread.submit(self._encode_text, batch, self.clip, self.tokenizer, self.device, self.clip_layer)
+        return self.pool_thread.submit(
+                self._encode_text,
+                batch,
+                self.clip,
+                self.tokenizer,
+                self.device,
+                self.clip_layer
+        )
 
     @staticmethod
     def _fit_image_size_to_64(w, h, image_size, max_image_size, min_image_size):
@@ -208,12 +234,27 @@ class DataProcessor:
         if not self.parallel:
             r = []
             for e in batch:
-                x = self._process_image(e, self.image_size, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm)
+                x = self._process_image(
+                        e,
+                        self.image_size,
+                        self.max_image_size,
+                        self.min_image_size,
+                        self.alpha_color,
+                        self.scale_algorithm
+                )
                 r.append(FutureMock(x))
             return r
         r = []
         for e in batch:
-            r.append(self.pool.submit(self._process_image, e, self.image_size, self.max_image_size, self.min_image_size, self.alpha_color, self.scale_algorithm))
+            r.append(self.pool.submit(
+                    self._process_image,
+                    e,
+                    self.image_size,
+                    self.max_image_size,
+                    self.min_image_size,
+                    self.alpha_color,
+                    self.scale_algorithm
+            ))
         return r
 
     @staticmethod
@@ -227,7 +268,12 @@ class DataProcessor:
         if not self.parallel:
             x = self._encode_image(batch, self.vae, self.device)
             return FutureMock(x)
-        return self.pool_thread.submit(self._encode_image, batch, self.vae, self.device)
+        return self.pool_thread.submit(
+                self._encode_image,
+                batch,
+                self.vae,
+                self.device
+        )
 
     def process_batch(self, size, batch, encode):
         scaled_images = self.process_image(batch)
@@ -316,55 +362,32 @@ class DataProcessor:
     def save_entries(self,
             entries,
             path,
-            save_image = True,
-            save_text = True,
-            save_encoded = True,
-            make_zip = False,
-            zip_algorithm = zipfile.ZIP_DEFLATED,
-            image_format = 'png',
-            image_quality = 100,
-            image_compress = False,
-            callback = None
+            callback = None,
+            **kwargs
     ):
         os.makedirs(path, exist_ok = True)
         if not self.parallel:
             r = []
             for e in entries:
-                x = self.save_entry(e, path, save_image, save_text, save_encoded, make_zip, zip_algorithm, image_format, image_quality, image_compress)
+                x = self.save_entry(e, path, **kwargs)
                 r.append(FutureMock(x))
             return r
         r = []
         for e in entries:
-            future = self.pool_thread.submit(self.save_entry, e, path, save_image, save_text, save_encoded, make_zip, zip_algorithm, image_format, image_quality, image_compress)
+            future = self.pool_thread.submit(self.save_entry, e, path, **kwargs)
             if callback is not None:
                 future.add_done_callback(callback)
             r.append(future)
         return r
 
-    def __call__(self,
-            dataset,
-            processed = False,
-            resume_from = None,
-            batch_size = 8,
-            encode = False,
-            quiet = False,
-            progress = True,
-            lazy = False
-    ):
+    def __call__(self, dataset, processed = False, **kwargs):
         if not processed:
-            return self.process_dataset(
-                    dataset,
-                    resume_from = resume_from,
-                    batch_size = batch_size,
-                    encode = encode,
-                    quiet = quiet,
-                    progress = progress,
-                    lazy = lazy
-            )
+            return self.process_dataset(dataset, **kwargs)
         else:
-            return self.dataset(dataset, batch_size = batch_size, quiet = quiet, progress = progress)
+            return self.dataset(dataset, **kwargs)
 
     def dataset(self, dataset, batch_size = 8, quiet = False):
+        raise NotImplementedError
         if isinstance(dataset, str):
             dataset = parse_folder_encoded(dataset, quiet)
 
@@ -406,8 +429,11 @@ class DataProcessor:
             tqdm.write(f"Batch size: {batch_size}")
             tqdm.write(f"\n    Bucket   | Batches | Samples")
             tqdm.write(   "---w--+---h--|---------|---------")
+            for size, bucket in batched_buckets:
+                num_samples = reduce(lambda x,y: x + len(y), bucket, 0)
+                tqdm.write(f" {size[0]:>4} | {size[1]:>4} | {len(bucket):>7} | {num_samples:>7}")
         if not lazy and self.parallel:
-            signal.signal(signal.SIGINT, self._sigint_handler)
+            signal.signal(signal.SIGINT, self._error_handler)
         pbar = tqdm(
                 total = len(dataset),
                 desc = 'Samples',
@@ -417,9 +443,6 @@ class DataProcessor:
                 colour = '#cc9911'
         )
         for size, bucket in batched_buckets:
-            if not quiet:
-                num_samples = reduce(lambda x,y: x + len(y), bucket, 0)
-                tqdm.write(f" {size[0]:>4} | {size[1]:>4} | {len(bucket):>7} | {num_samples:>7}")
             for batch in bucket:
                 r = self.process_batch(size, batch, encode)
                 if not lazy:

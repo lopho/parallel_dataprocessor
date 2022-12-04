@@ -21,6 +21,7 @@ import torch
 
 
 def parse_folder_encoded(path, quiet = False, progress = True):
+    raise NotImplementedError
     assert os.path.isdir(path)
     files = os.listdir(path)
     assert len(files) > 0

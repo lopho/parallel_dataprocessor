@@ -17,6 +17,7 @@ import os
 from itertools import zip_longest
 import torch
 from torchvision.transforms.functional import pil_to_tensor, to_pil_image
+from concurrent.futures import CancelledError
 
 
 def pil_to_torch(image, device = 'cpu'):
@@ -80,6 +81,45 @@ class FutureMock:
 
     def add_done_callback(self, f):
         f(self.data)
+
+
+class CatchPool:
+    def __init__(self, pool, error_callback):
+        self.pool = pool
+        self.error_callback = error_callback
+
+    def submit(self, *args, **kwargs):
+        return CatchFuture(self, self.pool.submit(*args, **kwargs))
+
+    def shutdown(self, wait = True, cancel_futures = False):
+        return self.pool.shutdown(wait = wait, cancel_futures = cancel_futures)
+
+
+class CatchFuture:
+    def __init__(self, pool, future):
+        self.pool = pool
+        self.future = future
+
+    def result(self, timeout = None):
+        try:
+            return self.future.result(timeout = timeout)
+        except Exception as e:
+            self.pool.error_callback()
+            if not isinstance(e, CancelledError):
+                import traceback
+                print(traceback.format_exc())
+
+    def add_done_callback(self, callback):
+        def _callback(x):
+            try:
+                e = x.exception()
+                if e is not None:
+                    self.pool.error_callback()
+                else:
+                    callback(x.result())
+            except CancelledError:
+                pass
+        self.future.add_done_callback(_callback)
 
 
 class LazyDict(dict):

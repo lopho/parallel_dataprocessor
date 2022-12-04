@@ -193,11 +193,7 @@ def main(args):
                 done = f.read().splitlines()
             dataset = { k: {**v} for k,v in dataset.items() if k not in done }
         plock = Lock()
-        def resume_callback(future):
-            try:
-                id = future.result()
-            except:
-                return
+        def resume_callback(id):
             with plock:
                 with open(progress_file, 'a') as f:
                     print(id, file = f)
