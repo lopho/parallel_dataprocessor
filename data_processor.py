@@ -120,7 +120,7 @@ class DataProcessor:
                     self._model_name,
                     device = self.device
             )
-        else:
+        elif not load:
             self.vae, self.clip, self.tokenizer = None, None, None
 
     @staticmethod
