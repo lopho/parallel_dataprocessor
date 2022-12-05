@@ -215,9 +215,14 @@ class DataProcessor:
         if entry['zip'] is not None:
             with zipfile.ZipFile(entry['zip']) as zf:
                 image = Image.open(zf.open(entry['image']))
-                image.load()
         else:
             image = Image.open(entry['image'])
+        try:
+            image.load()
+        except:
+            image = Image.new('RGB', (min_image_size, min_image_size))
+            image.info['LO_INVALID'] = True
+            return image
         if image.mode == 'RGBA':
             bg = Image.new('RGBA', image.size, alpha_color)
             image = Image.alpha_composite(bg, image).convert('RGB')
@@ -231,6 +236,7 @@ class DataProcessor:
         )
         if image.size != (w, h):
             image = image.resize((w, h), resample = scale_algorithm)
+        image.info['LO_INVALID'] = False
         return image
 
     def process_image(self, batch):
@@ -316,17 +322,10 @@ class DataProcessor:
     ):
         files = []
         out_path = os.path.join(out_dir, entry['id'])
-        if save_encoded and entry.get('latent', None) is not None:
-            path = out_path + '.pt'
-            buffer = BytesIO()
-            torch.save({
-                    'id': entry['id'],
-                    'size': entry['size'],
-                    'latent': entry['latent'].clone().cpu(),
-                    'latent_std': entry['latent_std'].clone().cpu(),
-                    'encoded_text': entry['encoded_text'].clone().cpu()
-            }, buffer)
-            files.append((path, buffer))
+        if entry.get('image', None) is not None:
+            if entry['image'].info['LO_INVALID']:
+                tqdm.write(f"Skipping invalid image file: {entry['id']}")
+                return entry['id']
         if save_image and entry.get('image', None) is not None:
             path = out_path + '.' + image_format
             buffer = BytesIO()
@@ -337,6 +336,17 @@ class DataProcessor:
                     quality = image_quality,
                     lossless = image_compress
             )
+            files.append((path, buffer))
+        if save_encoded and entry.get('latent', None) is not None:
+            path = out_path + '.pt'
+            buffer = BytesIO()
+            torch.save({
+                    'id': entry['id'],
+                    'size': entry['size'],
+                    'latent': entry['latent'].clone().cpu(),
+                    'latent_std': entry['latent_std'].clone().cpu(),
+                    'encoded_text': entry['encoded_text'].clone().cpu()
+            }, buffer)
             files.append((path, buffer))
         if save_text and entry.get('text', None) is not None:
             path = out_path + '.txt'

@@ -49,7 +49,7 @@ def parse_folder_encoded(path, quiet = False, progress = True):
         entries[id] = { 'id': id, 'data': abspath, 'image_size': size }
     return entries
 
-def parse_folder(path, quiet = False, progress = True):
+def parse_folder(path, quiet = False, progress = True, validate_image_content = False):
     assert os.path.isdir(path), f"not a directory: {path}"
     files = os.listdir(path)
     assert len(files) > 0
@@ -82,18 +82,24 @@ def parse_folder(path, quiet = False, progress = True):
                         ][0]
                         ptxt = id + '.txt'
                         f = zf.open(pimg)
-                        size = Image.open(f).size
+                        image = Image.open(f)
+                        if validate_image_content:
+                            image.load()
+                        size = image.size
                         files_dict[id]['image_size'] = size
                         files_dict[id]['image'] = pimg
                         files_dict[id]['text'] = ptxt
                         files_dict[id]['zip'] = abspath
                 else:
-                    size = Image.open(abspath).size
+                    image = Image.open(abspath)
+                    if validate_image_content:
+                        image.load()
+                    size = image.size
                     files_dict[id]['image_size'] = size
                     files_dict[id]['image'] = abspath
                     files_dict[id]['zip'] = None
             except Exception as e:
-                tqdm.write(f"Skipping invalid file: {abspath}")
+                tqdm.write(f"Skipping invalid file: {abspath} | {e}")
                 continue
     entries = {}
     for id in files_dict:
