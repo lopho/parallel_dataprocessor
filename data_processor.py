@@ -219,10 +219,10 @@ class DataProcessor:
             image = Image.open(entry['image'])
         try:
             image.load()
+            image.info['LO_INVALID'] = False
         except:
             image = Image.new('RGB', (min_image_size, min_image_size))
             image.info['LO_INVALID'] = True
-            return image
         if image.mode == 'RGBA':
             bg = Image.new('RGBA', image.size, alpha_color)
             image = Image.alpha_composite(bg, image).convert('RGB')
