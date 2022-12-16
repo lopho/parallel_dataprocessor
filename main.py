@@ -184,7 +184,7 @@ def main(args):
     parser.add_argument(
             '--delete_original',
             action = 'store_true',
-            help = 'delete original input data once it has been processed'
+            help = 'delete original input data once it has been processed (only if output path is set)'
     )
     args = parser.parse_args(args)
     if args.no_parallel:
