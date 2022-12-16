@@ -181,6 +181,11 @@ def main(args):
             action = 'store_true',
             help = "disable lazy evaluation Lazy can get more performance as parallel synchronization points are not fixed"
     )
+    parser.add_argument(
+            '--delete_original',
+            action = 'store_true',
+            help = 'delete original input data once it has been processed'
+    )
     args = parser.parse_args(args)
     if args.no_parallel:
         args.no_lazy = True
@@ -193,10 +198,15 @@ def main(args):
                 done = f.read().splitlines()
             dataset = { k: {**v} for k,v in dataset.items() if k not in done }
         plock = Lock()
-        def resume_callback(id):
+        def resume_callback(entry):
             with plock:
                 with open(progress_file, 'a') as f:
-                    print(id, file = f)
+                    print(entry['id'], file = f)
+            if args.delete_original:
+                if not args.no_save_image:
+                    os.remove(entry['input_image'])
+                if not args.no_save_text:
+                    os.remove(entry['input_text'])
     else:
         resume_callback = lambda x: x
     if not args.no_lazy and not args.quiet:
@@ -247,7 +257,6 @@ def main(args):
     data_processor.wait_for_done()
     if not args.quiet:
         tqdm.write(f"took {time.time() - time_start} seconds")
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])

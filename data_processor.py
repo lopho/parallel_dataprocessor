@@ -304,6 +304,8 @@ class DataProcessor:
             r['text'] = texts[i]
             r['image'] = scaled_images[i]
             r['size'] = size
+            r['input_image'] = batch[i]['image']
+            r['input_text'] = batch[i]['text']
             results.append(r)
         return results
 
@@ -337,6 +339,7 @@ class DataProcessor:
                     lossless = image_compress
             )
             files.append((path, buffer))
+            entry['image'].close()
         if save_encoded and entry.get('latent', None) is not None:
             path = out_path + '.pt'
             buffer = BytesIO()
@@ -370,7 +373,7 @@ class DataProcessor:
                 d.seek(0)
                 with open(f, 'wb') as f:
                     f.write(d.read())
-        return entry['id']
+        return entry
 
     def save_entries(self,
             entries,
