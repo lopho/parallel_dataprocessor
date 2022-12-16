@@ -1,3 +1,20 @@
+<!--
+Copyright (C) 2022  Lopho <contact@lopho.org>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 # parallel_dataloader
 
 ## As a dataloader for training
@@ -95,7 +112,7 @@ usage: main.py [-h] -i INPUT_PATH [-o OUTPUT_PATH] [--no_save_image] [--no_save_
                [--image_quality IMAGE_QUALITY] [--image_compress] [-m MODEL] [-e] [--clip_layer CLIP_LAYER]
                [-b BATCH_SIZE] [-q] [-s {nearest,box,bilinear,hamming,bicubic,lanczos}] [-d DEVICE] [--min MIN]
                [--max MAX] [--fixed_size FIXED_SIZE FIXED_SIZE] [--alpha ALPHA ALPHA ALPHA] [--resume_from RESUME_FROM]
-               [--no_parallel] [--no_lazy]
+               [--no_parallel] [--no_lazy] [--delete_original]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -139,6 +156,7 @@ optional arguments:
   --no_parallel         disable parallel processing
   --no_lazy             disable lazy evaluation Lazy can get more performance as parallel synchronization points are
                         not fixed
+  --delete_original     delete original input data once it has been processed (only if output path is set)
 
 Copyright (C) 2022 Lopho <contact@lopho.org> | Licensed under the AGPLv3 <https://www.gnu.org/licenses/>
 ```
