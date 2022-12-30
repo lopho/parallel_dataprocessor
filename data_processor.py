@@ -328,6 +328,17 @@ class DataProcessor:
             if entry['image'].info['LO_INVALID']:
                 tqdm.write(f"Skipping invalid image file: {entry['id']}")
                 return entry['id']
+        if save_encoded and entry.get('latent', None) is not None:
+            path = out_path + '.pt'
+            buffer = BytesIO()
+            torch.save({
+                    'id': entry['id'],
+                    'size': entry['size'],
+                    'latent': entry['latent'].clone().cpu(),
+                    'latent_std': entry['latent_std'].clone().cpu(),
+                    'encoded_text': entry['encoded_text'].clone().cpu()
+            }, buffer)
+            files.append((path, buffer))
         if save_image and entry.get('image', None) is not None:
             path = out_path + '.' + image_format
             buffer = BytesIO()
@@ -340,17 +351,6 @@ class DataProcessor:
             )
             files.append((path, buffer))
             entry['image'].close()
-        if save_encoded and entry.get('latent', None) is not None:
-            path = out_path + '.pt'
-            buffer = BytesIO()
-            torch.save({
-                    'id': entry['id'],
-                    'size': entry['size'],
-                    'latent': entry['latent'].clone().cpu(),
-                    'latent_std': entry['latent_std'].clone().cpu(),
-                    'encoded_text': entry['encoded_text'].clone().cpu()
-            }, buffer)
-            files.append((path, buffer))
         if save_text and entry.get('text', None) is not None:
             path = out_path + '.txt'
             buffer = BytesIO()
