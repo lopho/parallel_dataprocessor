@@ -55,13 +55,12 @@ from data_processor import DataProcessor
 dp = DataProcessor(
         # for sd v2: model_name = 'stabilityai/stable-diffusion-2'
         model_name = 'CompVis/stable-diffusion-v1-4',
-        encode = True,
         max_image_size = 512,
         min_image_size = 256,
         clip_layer = -2,
         scale_algorithm = Image.Resampling.LANCZOS
 )
-for b in dp(dataset = '/path/to/dataset', batch_size = 16):
+for b in dp(dataset = '/path/to/dataset', batch_size = 16, encode = True):
     # b is a list of dicts, with size of batch size
     # len(b) == batch_size
     # b = [
