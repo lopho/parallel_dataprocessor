@@ -166,6 +166,9 @@ class DataProcessor:
                 encoded_texts = y.hidden_states
             elif isinstance(clip_layer, int):
                 encoded_texts = y.hidden_states[clip_layer]
+                if clip_layer < len(y.hidden_states) - 1:
+                    # apply final layer norm if not the last state
+                    encoded_texts = clip.text_model.final_layer_norm(encoded_texts)
         return encoded_texts
 
     def encode_text(self, batch):
